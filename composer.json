@@ -1,0 +1,34 @@
+{
+    "name": "packagefactory/kristlbol",
+    "description": "Static Site Generator Library",
+    "type": "library",
+    "license": "MIT",
+    "authors": [
+        {
+            "name": "Wilhelm Behncke",
+            "email": "wilhelm.behncke@protonmail.com"
+        }
+    ],
+    "bin": ["bin/kristlbol"],
+    "autoload": {
+        "psr-4": {
+            "PackageFactory\\KristlBol\\": "src/",
+            "PackageFactory\\KristlBol\\Test\\": "test/"
+        }
+    },
+    "require": {
+        "symfony/console": "^5.1",
+        "packagefactory/virtualdom": "dev-master",
+        "psr/http-message": "^1.0",
+        "psr/log": "^1.1",
+        "league/flysystem": "^1.0",
+        "react/http": "^1.0"
+    },
+    "minimum-stability": "stable",
+    "repositories": {
+        "virtual-dom": {
+            "url": "git@github.com:PackageFactory/PackageFactory.VirtualDOM.git",
+            "type": "vcs"
+        }
+    }
+}

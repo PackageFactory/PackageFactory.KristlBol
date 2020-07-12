@@ -1,0 +1,31 @@
+#!/usr/bin/env php
+<?php declare(strict_types=1);
+
+$foundAutoloader = false;
+foreach ([
+    __DIR__ . '/../../autoload.php', 
+    __DIR__ . '/../vendor/autoload.php', 
+    __DIR__ . '/vendor/autoload.php'
+] as $file) {
+    if (file_exists($file)) {
+        $foundAutoloader = true;
+        require_once $file;
+        break;
+    }
+}
+
+if (!$foundAutoloader) {
+    fwrite(
+        STDERR,
+        'You need to set up the project dependencies using Composer:' . PHP_EOL . PHP_EOL .
+        '    composer install' . PHP_EOL . PHP_EOL .
+        'You can learn all about Composer on https://getcomposer.org/.' . PHP_EOL
+    );
+
+    die(1);
+}
+
+$app = new \Symfony\Component\Console\Application();
+$app->add(new \PackageFactory\KristlBol\Application\Command\GenerateCommand());
+$app->add(new \PackageFactory\KristlBol\Application\Command\ServeCommand());
+$app->run();
