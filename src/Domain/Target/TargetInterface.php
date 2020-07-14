@@ -3,6 +3,6 @@ namespace PackageFactory\KristlBol\Domain\Target;
 
 interface TargetInterface
 {
-    public function handleWriteDirectory(Command\WriteDirectory $command): void;
-    public function handleWriteFile(Command\WriteFile $command): void;
+    public function whenDirectoryWasWritten(Event\DirectoryWasWritten $event): void;
+    public function whenFileWasWritten(Event\FileWasWritten $event): void;
 }
