@@ -3,5 +3,5 @@ namespace PackageFactory\KristlBol\Domain\Node;
 
 interface FileInterface extends NodeInterface
 {
-    public function getContent(): ContentInterface;
+    public function findContent(): ContentInterface;
 }

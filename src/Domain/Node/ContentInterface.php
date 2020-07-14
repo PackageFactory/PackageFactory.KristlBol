@@ -6,5 +6,5 @@ interface ContentInterface
     /**
      * @return resource
      */
-    public function getStream();
+    public function asStream();
 }

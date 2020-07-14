@@ -1,10 +1,31 @@
 <?php declare(strict_types=1);
 namespace PackageFactory\KristlBol\Infrastructure;
 
-use PackageFactory\KristlBol\Domain\KristlBol;
+use PackageFactory\KristlBol\Application\KristlBol;
 
 final class KristlBolFactory
 {
+    public function fromNamedConfigurationFile(string $relativePathFromCwdToConfigurationFile): KristlBol
+    {
+        $configurationFilePath = getcwd() . DIRECTORY_SEPARATOR .  $relativePathFromCwdToConfigurationFile;
+        if (file_exists($configurationFilePath)) {
+            $configurationFileAsString = file_get_contents($configurationFilePath);
+            $configurationFile = [];
+
+            try {
+                $configurationFile = json_decode($configurationFileAsString, true, 512, JSON_THROW_ON_ERROR);
+            } catch (\Exception $e) {
+                throw KristlBolInitializationFailed::becauseOfAnUnderlyingException($e);
+            }
+
+            return $this->fromKristBolRc($configurationFile);
+        }
+
+        throw KristlBolInitializationFailed::becauseNoSuitableConfigurationFileCouldBeFound([
+            $configurationFilePath
+        ]);
+    }
+
     public function fromEnvironment(): KristlBol
     {
         $kristlBolRcFilePath = getcwd() . DIRECTORY_SEPARATOR . '.kristlbolrc';

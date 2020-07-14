@@ -1,8 +1,7 @@
 <?php declare(strict_types=1);
 namespace PackageFactory\KristlBol\Application\Command;
 
-use League\Flysystem\Filesystem;
-use PackageFactory\VirtualDOM\Rendering\HTML5StringRenderer;
+use PackageFactory\KristlBol\Infrastructure\KristlBolFactory;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Input\InputArgument;
@@ -22,12 +21,11 @@ final class GenerateCommand extends Command
     {
         $this
             ->setDescription('Generate static documents')
-            ->setHelp('Generate static documents from KristlBolFile')
+            ->setHelp('Generate static documents')
             ->addArgument(
-                'file', 
-                InputArgument::OPTIONAL, 
-                'Path to KristlBolFile.php',
-                getcwd() . DIRECTORY_SEPARATOR . 'KristlBolFile.php'
+                'config',
+                InputArgument::OPTIONAL,
+                'Path to KristlBol configuration file'
             )
         ;
     }
@@ -35,37 +33,20 @@ final class GenerateCommand extends Command
     /**
      * @param InputInterface $input
      * @param OutputInterface $output
-     * @return void
+     * @return int
      */
     protected function execute(InputInterface $input, OutputInterface $output)
     {
-        /** @var KristlBolFile $kristlBolFile */
-        $kristlBolFile = require $input->getArgument('file');
-        $filesystem = new Filesystem($kristlBolFile->output());
-        foreach ($filesystem->listContents() as $item) {
-            $filesystem->delete($item['path']);
+        $kristlBolFactory = new KristlBolFactory();
+
+        if ($pathToConfigFile = $input->getArgument('config')) {
+            $kristlBol = $kristlBolFactory->fromNamedConfigurationFile($pathToConfigFile);
+            $kristlBol->generate();
+            return Command::SUCCESS;
+        } else {
+            $kristlBol = $kristlBolFactory->fromEnvironment();
+            $kristlBol->generate();
+            return Command::SUCCESS;
         }
-
-        $output->writeln([
-            sprintf(
-                'Generating Static Documents for "%s"',
-                $kristlBolFile->describe()
-            ),
-            ''
-        ]);
-
-        foreach ($kristlBolFile->documents() as $document) {
-            $output->writeln([$document->getPath()]);
-            $filesystem->write(
-                $document->getPath(), 
-                sprintf(
-                    '<!doctype %s>%s', 
-                    $document->getDoctype(),
-                    HTML5StringRenderer::render($document)
-                )
-            );
-        }
-
-        return Command::SUCCESS;
     }
 }
