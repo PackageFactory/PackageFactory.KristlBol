@@ -1,7 +1,7 @@
 <?php declare(strict_types=1);
-namespace PackageFactory\KristlBol\Domain\Node\Query;
+namespace PackageFactory\KristlBol\Domain\Tree\Query;
 
-use PackageFactory\KristlBol\Domain\Node\Path;
+use PackageFactory\KristlBol\Domain\Shared\Path;
 
 final class GetFile
 {

@@ -1,5 +1,5 @@
 <?php declare(strict_types=1);
-namespace PackageFactory\KristlBol\Domain\Node;
+namespace PackageFactory\KristlBol\Domain\Shared;
 
 final class FileNameIsInvalid extends \DomainException
 {
