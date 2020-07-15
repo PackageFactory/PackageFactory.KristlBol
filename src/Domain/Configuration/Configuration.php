@@ -9,18 +9,18 @@ final class Configuration
     private $batches;
 
     /**
-     * @var array|Logger[]
+     * @var Logger
      */
-    private $loggers;
+    private $logger;
 
     /**
      * @param array $batches
-     * @param array $loggers
+     * @param Logger $logger
      */
-    private function __construct(array $batches, array $loggers)
+    private function __construct(array $batches, Logger $logger)
     {
         $this->batches = $batches;
-        $this->loggers = $loggers;
+        $this->logger = $logger;
     }
 
     /**
@@ -33,18 +33,83 @@ final class Configuration
             throw ConfigurationIsInvalid::becauseNoBatchesAreConfigured();
         }
 
-        $array['loggers'] = $array['loggers'] ?? [];
+        $batches = [];
+        foreach ($array['batches'] as $name => $value) {
+            $batches[$name] = Batch::fromArray($name, $value);
+        }
 
         return new self(
-            array_map(
-                function(array $array, string $name) { return  Batch::fromArray($name, $array); },
-                $array['batches']
-            ),
-            array_map(
-                function(array $array, string $name) { return  Logger::fromArray($name, $array); },
-                $array['loggers']
-            )
+            $batches,
+            Logger::fromArray($array['logger'] ?? [
+                'logger' => 'PackageFactory\KristlBol\Infrastructure\Logger\CommandLineLogger'
+            ])
         );
+    }
+
+    /**
+     * @param string $pathToComposerJson
+     * @return self
+     */
+    public static function fromComposerJson(string $pathToComposerJson): self
+    {
+        if (!file_exists($pathToComposerJson)) {
+            throw ConfigurationIsInvalid::becauseNoSuitableConfigurationFileCouldBeFound([
+                $pathToComposerJson
+            ]);
+        }
+
+        $contents = file_get_contents($pathToComposerJson);
+
+        try {
+            $contentsAsArray = json_decode($contents, true, 512, JSON_THROW_ON_ERROR);
+        } catch (\Exception $e) {
+            throw ConfigurationIsInvalid::becauseOfAnUnderlyingException($e);
+        }
+
+        return self::fromArray($contentsAsArray['extra']['kristlbol'] ?? []);
+    }
+
+    /**
+     * @param string $pathToConfigurationFile
+     * @return self
+     */
+    public static function fromConfigurationFile(string $pathToConfigurationFile): self
+    {
+        if (!file_exists($pathToConfigurationFile)) {
+            throw ConfigurationIsInvalid::becauseNoSuitableConfigurationFileCouldBeFound([
+                $pathToConfigurationFile
+            ]);
+        }
+        $contents = file_get_contents($pathToConfigurationFile);
+
+        try {
+            $contentsAsArray = json_decode($contents, true, 512, JSON_THROW_ON_ERROR);
+        } catch (\Exception $e) {
+            throw ConfigurationIsInvalid::becauseOfAnUnderlyingException($e);
+        }
+
+        return self::fromArray($contentsAsArray);
+    }
+
+    /**
+     * @return self
+     */
+    public static function fromEnvironment(): self
+    {
+        $kristlBolRcFilePath = getcwd() . DIRECTORY_SEPARATOR . '.kristlbolrc';
+        if (file_exists($kristlBolRcFilePath)) {
+            return self::fromConfigurationFile($kristlBolRcFilePath);
+        }
+
+        $composerJsonFilePath = getcwd() . DIRECTORY_SEPARATOR . 'composer.json';
+        if (file_exists($composerJsonFilePath)) {
+            return self::fromComposerJson($composerJsonFilePath);
+        }
+
+        throw ConfigurationIsInvalid::becauseNoSuitableConfigurationFileCouldBeFound([
+            $kristlBolRcFilePath,
+            $composerJsonFilePath
+        ]);
     }
 
     /**
@@ -57,27 +122,23 @@ final class Configuration
 
     /**
      * @param string $name
-     * @return null|Batch
+     * @return Batch
      */
-    public function getBatchWithName(string $name): ?Batch
+    public function getBatchWithName(string $name): Batch
     {
-        return $this->batches[$name] ?? null;
+        if (!isset($this->batches[$name])) {
+            throw ConfigurationIsInvalid::
+                becauseRequiredBatchIsNotConfigured($name);
+        }
+
+        return $this->batches[$name];
     }
 
     /**
-     * @return array|Logger[]
+     * @return Logger
      */
-    public function getLoggers(): array
+    public function getLogger(): Logger
     {
-        return $this->loggers;
-    }
-
-    /**
-     * @param string $name
-     * @return null|Logger
-     */
-    public function getLoggerWithName(string $name): ?Logger
-    {
-        return $this->loggers[$name] ?? null;
+        return $this->logger;
     }
 }

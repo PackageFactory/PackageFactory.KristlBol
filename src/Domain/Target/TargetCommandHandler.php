@@ -1,65 +1,77 @@
 <?php declare(strict_types=1);
 namespace PackageFactory\KristlBol\Domain\Target;
 
-use League\Event\EmitterInterface;
-use PackageFactory\KristlBol\Domain\Node\DirectoryInterface;
-use PackageFactory\KristlBol\Domain\Node\FileInterface;
-use PackageFactory\KristlBol\Domain\Node\RecursiveDirectoryIterator;
+use PackageFactory\KristlBol\Domain\Configuration\Batch;
+use PackageFactory\KristlBol\Domain\Logger\Logger;
+use PackageFactory\KristlBol\Domain\Tree\DirectoryInterface;
+use PackageFactory\KristlBol\Domain\Tree\FileInterface;
+use PackageFactory\KristlBol\Domain\Tree\RecursiveDirectoryIterator;
 use PackageFactory\KristlBol\Domain\Target\Event\DirectoryWasWritten;
 use PackageFactory\KristlBol\Domain\Target\Event\FileWasWritten;
+use PackageFactory\KristlBol\Domain\Tree\Directory;
 use Psr\Log\LoggerInterface;
-use Psr\Log\NullLogger;
 
-final class TargetComandHandler
+final class TargetCommandHandler
 {
     /**
-     * @var DirectoryInterface
+     * @param Command\GenerateAll $command
+     * @return void
      */
-    private $rootDirectory;
+    public function handleGenerateAll(Command\GenerateAll $command): void
+    {
+        $configuration = $command->getConfiguration();
+        $logger = Logger::fromConfiguredLogger($configuration->getLogger());
 
-    /**
-     * @var EmitterInterface
-     */
-    private $eventEmitter;
+        $logger->info('Writing all batches...');
 
-    /**
-     * @var LoggerInterface
-     */
-    private $logger;
+        foreach ($configuration->getBatches() as $batch) {
+            $this->writeBatch($batch, $logger);
+        }
 
-    /**
-     * @param EmitterInterface $eventEmitter
-     */
-    public function __construct(
-        DirectoryInterface $rootDirectory,
-        EmitterInterface $eventEmitter,
-        LoggerInterface $logger = null
-    ) {
-        $this->rootDirectory = $rootDirectory;
-        $this->eventEmitter = $eventEmitter;
-        $this->logger = $logger ?? new NullLogger();
+        $logger->info('Finished writing all batches.');
     }
 
     /**
+     * @param Command\GenerateBatch $command
      * @return void
      */
-    public function handleGenerate(Command\Generate $command): void
+    public function handleGenerateBatch(Command\GenerateBatch $command): void
     {
-        foreach (RecursiveDirectoryIterator::iterate($this->rootDirectory) as $node) {
-            if ($node instanceof FileInterface) {
-                $this->eventEmitter->emit(FileWasWritten::fromFile($node));
-                $this->logger->info('File was written: ' . $node->getPath());
-            } elseif ($node instanceof DirectoryInterface) {
-                $this->eventEmitter->emit(DirectoryWasWritten::fromDirectory($node));
-                $this->logger->info('Directory was written: ' . $node->getPath());
-            }
+        $configuration = $command->getConfiguration();
+        $logger = Logger::fromConfiguredLogger($configuration->getLogger());
 
-            $this->logger->warning(
-                sprintf(
-                    'Strange node of type "%s" was encountered and ignored.', 
-                    get_class($node)
-                )
-            );
+        $this->writeBatch($command->getBatch(), $logger);
+    }
+
+    /**
+     * @param Batch $batch
+     * @param LoggerInterface $logger
+     * @return void
+     */
+    protected function writeBatch(Batch $batch, LoggerInterface $logger): void
+    {
+        $logger->info('Writing batch "' . $batch->getName() . '"...');
+
+        $stream = TargetEventStream::fromBatch($batch);
+        $rootDirectory = Directory::fromConfiguredRootDirectory($batch->getRootDirectory());
+
+        foreach (RecursiveDirectoryIterator::iterate($rootDirectory) as $node) {
+            if ($node instanceof FileInterface) {
+                $stream->emit(FileWasWritten::fromFile($node));
+                $logger->info('File was written: ' . $node->getPath());
+            } elseif ($node instanceof DirectoryInterface) {
+                $stream->emit(DirectoryWasWritten::fromDirectory($node));
+                $logger->info('Directory was written: ' . $node->getPath());
+            } else {
+                $logger->warning(
+                    sprintf(
+                        'Strange node of type "%s" was encountered and ignored.', 
+                        get_class($node)
+                    )
+                );
+            }
         }
+
+        $logger->info('Finished writing batch "' . $batch->getName() . '".');
     }
 }

@@ -13,16 +13,10 @@ final class TargetEventStream extends Emitter
     public static function fromBatch(Batch $batch): self
     {
         $stream = new self();
+        
         $targets = [];
-
         foreach ($batch->getTargets() as $target) {
-            $className = $target->getImplementationClassName();
-
-            if (method_exists($className, 'fromOptions')) {
-                $targets[] = $className::fromOptions($target->getOptions());
-            } else {
-                $targets[] = new $className;
-            }
+            $targets[] = Target::fromConfiguredTarget($target);
         }
 
         $stream->addListener(

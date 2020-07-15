@@ -21,7 +21,12 @@ final class Target
      */
     private function __construct(string $implementationClassName, array $options)
     {
-        if (!class_implements($implementationClassName, TargetInterface::class)) {
+        if (!class_exists($implementationClassName)) {
+            throw ConfigurationIsInvalid::
+                becauseTargetImplementationDoesNotExist($implementationClassName);
+        }
+
+        if (!is_subclass_of($implementationClassName, TargetInterface::class, true)) {
             throw ConfigurationIsInvalid::
                 becauseTargetDoesNotReferenceAnImplementationOfTargetInterface($implementationClassName);
         }
@@ -36,7 +41,7 @@ final class Target
      */
     public static function fromArray(array $array): self 
     {
-        return new self($array['target'], $array['targetOptions']);
+        return new self($array['target'], $array['targetOptions'] ?? []);
     }
 
     /**

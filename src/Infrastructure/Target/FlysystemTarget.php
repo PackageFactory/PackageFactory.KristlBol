@@ -6,6 +6,8 @@ use League\Flysystem\AdapterInterface;
 use League\Flysystem\Adapter;
 use PackageFactory\KristlBol\Domain\Target\TargetInterface;
 use PackageFactory\KristlBol\Domain\Target\Command;
+use PackageFactory\KristlBol\Domain\Target\Event\DirectoryWasWritten;
+use PackageFactory\KristlBol\Domain\Target\Event\FileWasWritten;
 
 final class FlysystemTarget implements TargetInterface
 {
@@ -33,23 +35,23 @@ final class FlysystemTarget implements TargetInterface
     }
 
     /**
-     * @param Command\WriteDirectory $command
+     * @param DirectoryWasWritten $command
      * @return void
      */
-    public function handleWriteDirectory(Command\WriteDirectory $command): void
+    public function whenDirectoryWasWritten(DirectoryWasWritten $event): void
     {
-        $this->filesystem->createDir((string) $command->getPath());
+        $this->filesystem->createDir((string) $event->getPath());
     }
 
     /**
-     * @param Command\WriteFile $command
+     * @param FileWasWritten $command
      * @return void
      */
-    public function handleWriteFile(Command\WriteFile $command): void
+    public function whenFileWasWritten(FileWasWritten $event): void
     {
         $this->filesystem->writeStream(
-            (string) $command->getPath(), 
-            $command->getContent()->getStream()
+            (string) $event->getPath(), 
+            $event->getContent()->toStream()
         );
     }
 }

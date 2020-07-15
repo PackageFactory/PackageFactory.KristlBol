@@ -2,8 +2,8 @@
 namespace PackageFactory\KristlBol\Domain\Target\Event;
 
 use League\Event\AbstractEvent;
-use PackageFactory\KristlBol\Domain\Node\DirectoryInterface;
-use PackageFactory\KristlBol\Domain\Node\Path;
+use PackageFactory\KristlBol\Domain\Shared\Path;
+use PackageFactory\KristlBol\Domain\Tree\DirectoryInterface;
 
 final class DirectoryWasWritten extends AbstractEvent
 {

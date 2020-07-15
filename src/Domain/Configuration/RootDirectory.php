@@ -1,7 +1,7 @@
 <?php declare(strict_types=1);
 namespace PackageFactory\KristlBol\Domain\Configuration;
 
-use PackageFactory\KristlBol\Domain\Node\DirectoryInterface;
+use PackageFactory\KristlBol\Domain\Tree\DirectoryInterface;
 
 final class RootDirectory
 {
@@ -15,7 +15,12 @@ final class RootDirectory
      */
     private function __construct(string $implementationClassName)
     {
-        if (!class_implements($implementationClassName, DirectoryInterface::class)) {
+        if (!class_exists($implementationClassName)) {
+            throw ConfigurationIsInvalid::
+                becauseRootDirectoryImplementationDoesNotExist($implementationClassName);
+        }
+
+        if (!is_subclass_of($implementationClassName, DirectoryInterface::class, true)) {
             throw ConfigurationIsInvalid::
                 becauseRootDirectoryDoesNotReferenceAnImplementationOfDirectoryInterface($implementationClassName);
         }

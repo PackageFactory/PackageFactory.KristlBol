@@ -25,6 +25,7 @@ final class Batch
      */
     private function __construct(string $name, RootDirectory $rootDirectory, array $targets)
     {
+        $this->name = $name;
         $this->rootDirectory = $rootDirectory;
         $this->targets = $targets;
     }
@@ -37,7 +38,7 @@ final class Batch
     public static function fromArray(string $name, array $array): self
     {
         if (!isset($array['rootDirectory'])) {
-            throw BatchIsInvalid::becauseNoRootDirectoryImplementationWasSpecified();
+            throw ConfigurationIsInvalid::becauseNoRootDirectoryImplementationWasSpecifiedInBatch();
         }
 
         $array['targets'] = $array['targets'] ?? [[

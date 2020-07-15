@@ -24,14 +24,15 @@ final class ServeCommand extends Command
         $this
             ->setDescription('Serve documents')
             ->setHelp('Serve documents from KristlBolFile via HTTP for Development purposes')
-            ->addArgument(
-                'file', 
+            ->addOption(
+                'config', 
+                'c',
                 InputArgument::OPTIONAL, 
-                'Path to KristlBolFile.php',
-                getcwd() . DIRECTORY_SEPARATOR . 'KristlBolFile.php'
+                'Path to ConfigurationFile'
             )
-            ->addArgument(
+            ->addOption(
                 'port', 
+                'p',
                 InputArgument::OPTIONAL, 
                 'Port to listen on',
                 8080
@@ -48,45 +49,25 @@ final class ServeCommand extends Command
     {
         $loop = \React\EventLoop\Factory::create();
 
-        /** @var KristlBolFile $kristlBolFile */
-        $kristlBolFile = require $input->getArgument('file');
-
-        $server = new \React\Http\Server(
-            $loop, 
-            function (ServerRequestInterface $request) use ($kristlBolFile) {
-                if ($document = $kristlBolFile->document($request->getUri())) {
-                    return new \React\Http\Message\Response(
-                        200,
-                        array(
-                            'Content-Type' => 'text/html'
-                        ),
-                        sprintf(
-                            '<!doctype %s>%s', 
-                            $document->getDoctype(),
-                            HTML5StringRenderer::render($document)
-                        )
-                    );
-                } else {
-                    return new \React\Http\Message\Response(
-                        404,
-                        array(
-                            'Content-Type' => 'text/html'
-                        ),
-                        'Not found'
-                    );
-                }
-            }
+        $process = new \React\ChildProcess\Process(
+            sprintf('php -S 0.0.0.0:%s %s', $input->getOption('port'), __DIR__ . '/../../Infrastructure/Server.php'),
+            getcwd(),
+            ['PACKAGE_FACTORY_KRISTLBOL_CONFIG_FILE' => $input->getOption('config')]
         );
-        $socket = new \React\Socket\Server((int) $input->getArgument('port'), $loop);
-        $server->listen($socket);
+        $process->start($loop);
+
         $output->writeln([
-            sprintf(
-                '"%s" server can be reached via http://127.0.0.1:%s',
-                $kristlBolFile->describe(),
-                $input->getArgument('port')
-            ),
-            ''
+            sprintf('Server started on port %s.', $input->getOption('port')),
+            sprintf('Reachable via %s', 'http://127.0.0.1:' . $input->getOption('port'))
         ]);
+
+        $process->stdout->on('data', function ($chunk) use ($output) {
+            $output->writeln([$chunk]);
+        });
+
+        $process->on('exit', function($exitCode) use ($output) {
+            $output->writeln(['Process exited with code ' . $exitCode]);
+        });
 
         $loop->run();
         return Command::SUCCESS;

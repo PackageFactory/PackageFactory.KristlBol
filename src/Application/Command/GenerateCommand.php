@@ -1,7 +1,8 @@
 <?php declare(strict_types=1);
 namespace PackageFactory\KristlBol\Application\Command;
 
-use PackageFactory\KristlBol\Infrastructure\KristlBolFactory;
+use PackageFactory\KristlBol\Application\KristlBol;
+use PackageFactory\KristlBol\Domain\Configuration\Configuration;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Input\InputArgument;
@@ -22,10 +23,17 @@ final class GenerateCommand extends Command
         $this
             ->setDescription('Generate static documents')
             ->setHelp('Generate static documents')
-            ->addArgument(
+            ->addOption(
                 'config',
+                'c',
                 InputArgument::OPTIONAL,
                 'Path to KristlBol configuration file'
+            )
+            ->addOption(
+                'batch',
+                'b',
+                InputArgument::OPTIONAL,
+                'If set, only this batch will be generated'
             )
         ;
     }
@@ -37,16 +45,13 @@ final class GenerateCommand extends Command
      */
     protected function execute(InputInterface $input, OutputInterface $output)
     {
-        $kristlBolFactory = new KristlBolFactory();
-
-        if ($pathToConfigFile = $input->getArgument('config')) {
-            $kristlBol = $kristlBolFactory->fromNamedConfigurationFile($pathToConfigFile);
-            $kristlBol->generate();
-            return Command::SUCCESS;
+        if ($pathToConfigFile = $input->getOption('config')) {
+            $configuration = Configuration::fromConfigurationFile($pathToConfigFile);
         } else {
-            $kristlBol = $kristlBolFactory->fromEnvironment();
-            $kristlBol->generate();
-            return Command::SUCCESS;
+            $configuration = Configuration::fromEnvironment();
         }
+
+        KristlBol::generate($configuration, $input->getOption('batch'));
+        return Command::SUCCESS;
     }
 }

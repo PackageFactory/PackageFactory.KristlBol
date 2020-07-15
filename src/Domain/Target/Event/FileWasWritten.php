@@ -2,9 +2,9 @@
 namespace PackageFactory\KristlBol\Domain\Target\Event;
 
 use League\Event\AbstractEvent;
-use PackageFactory\KristlBol\Domain\Node\ContentInterface;
-use PackageFactory\KristlBol\Domain\Node\FileInterface;
-use PackageFactory\KristlBol\Domain\Node\Path;
+use PackageFactory\KristlBol\Domain\Shared\ContentInterface;
+use PackageFactory\KristlBol\Domain\Shared\Path;
+use PackageFactory\KristlBol\Domain\Tree\FileInterface;
 
 final class FileWasWritten extends AbstractEvent
 {

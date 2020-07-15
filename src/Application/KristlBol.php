@@ -1,76 +1,65 @@
 <?php declare(strict_types=1);
 namespace PackageFactory\KristlBol\Application;
 
-use PackageFactory\KristlBol\Domain\Node;
-use PackageFactory\KristlBol\Domain\Node\DirectoryInterface;
-use PackageFactory\KristlBol\Domain\Node\FileInterface;
-use PackageFactory\KristlBol\Domain\Node\RecursiveDirectoryIterator;
-use PackageFactory\KristlBol\Domain\Target;
-use PackageFactory\KristlBol\Domain\Target\Command\WriteDirectory;
-use PackageFactory\KristlBol\Domain\Target\Command\WriteFile;
+use PackageFactory\KristlBol\Domain\Configuration\Configuration;
+use PackageFactory\KristlBol\Domain\Shared\Path;
+use PackageFactory\KristlBol\Domain\Target\Command\GenerateAll;
+use PackageFactory\KristlBol\Domain\Target\Command\GenerateBatch;
+use PackageFactory\KristlBol\Domain\Target\TargetCommandHandler;
+use PackageFactory\KristlBol\Domain\Tree\Directory;
+use PackageFactory\KristlBol\Domain\Tree\Query\GetFile;
+use PackageFactory\KristlBol\Infrastructure\Shared\Content\StringContent;
+use Psr\Http\Message\RequestInterface;
+use Psr\Http\Message\ResponseInterface;
+use Psr\Http\Message\ServerRequestInterface;
+use Psr\Http\Message\UriInterface;
 
 final class KristlBol
 {
     /**
-     * @var Node\DirectoryInterface
+     * @param Configuration $configuration
+     * @param string|null $batchName
+     * @return void
      */
-    private $rootDirectory;
-
-    /**
-     * @var Target\TargetInterface
-     */
-    private $target;
-
-    /**
-     * @param Node\DirectoryInterface $rootDirectory
-     * @param Target\TargetInterface $target
-     */
-    public function __construct(
-        Node\DirectoryInterface $rootDirectory,
-        Target\TargetInterface $target
-    ) {
-        $this->rootDirectory = $rootDirectory;
-        $this->target = $target;
-    }
-
-    /**
-     * @return Node\DirectoryInterface
-     */
-    public function getRootDirectory(): Node\DirectoryInterface
+    public static function generate(Configuration $configuration, ?string $batchName = null): void
     {
-        return $this->rootDirectory;
-    }
+        $targetCommandHandler = new TargetCommandHandler;
 
-    /**
-     * @return Target\TargetInterface
-     */
-    public function getTarget(): Target\TargetInterface
-    {
-        return $this->target;
-    }
-
-    public function generate(): void
-    {
-        foreach (RecursiveDirectoryIterator::iterate($this->rootDirectory) as $node) {
-            if ($node instanceof FileInterface) {
-                $this->target->handleWriteFile(
-                    new WriteFile(
-                        (string) $node->getPath(),
-                        $node->findContent()
-                    )
-                );
-            } elseif ($node instanceof DirectoryInterface) {
-                $this->target->handleWriteDirectory(
-                    new WriteDirectory(
-                        (string) $node->getPath()
-                    )
-                );
-            }
+        if ($batchName === null) {
+            $targetCommandHandler->handleGenerateAll(
+                new GenerateAll($configuration)
+            );
+        } else {
+            $targetCommandHandler->handleGenerateBatch(
+                new GenerateBatch($configuration, $configuration->getBatchWithName($batchName))
+            );
         }
     }
 
-    public function serve(): void
-    {
+    /**
+     * @param Configuration $configuration
+     * @param UriInterface $uri
+     * @param string $batchName
+     * @return ResponseInterface
+     */
+    public static function serve(
+        Configuration $configuration, 
+        string $batchName, 
+        ServerRequestInterface $request
+    ): ResponseInterface {
+        $psr17Factory = new \Nyholm\Psr7\Factory\Psr17Factory();
+        $batch = $configuration->getBatchWithName($batchName);
+        $rootDirectory = Directory::fromConfiguredRootDirectory($batch->getRootDirectory());
+        $file = $rootDirectory->findFile(new GetFile(Path::fromUri($request->getUri())));
 
+        if ($file) {
+            return $psr17Factory->createResponse(200)->withBody(
+                $psr17Factory->createStreamFromResource($file->findContent()->toStream())
+            );
+        } else {
+            return $psr17Factory->createResponse(404)->withBody(
+                $psr17Factory->createStream('Not Found')
+            );
+        }
     }
 }
